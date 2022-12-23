@@ -1,0 +1,107 @@
+#Packages
+install.packages("twitteR")
+install.packages("dplyr")
+install.packages("plotly")
+install.packages("ggplot2")
+install.packages("RColorBrewer")
+install.packages("rtweet")
+install.packages("tm")
+
+library ('twitteR')
+library ('dplyr')
+library('ggplot2')
+library('RColorBrewer')
+library('rtweet')
+library('tm')
+library('plotly')
+
+#Extract 10000 tweets from Twitter using twitteR package including retweets.
+CONSUMER_SECRET <-"3Qc7R1DNGW32hzXXJFZoOyWyDMAMh05MC5RVDt4SY6JKtUb9kw"
+CONSUMER_KEY <- "DKCugN5aVwJGDxS5fM8SvqyHz"
+ACCESS_SECRET <- "TrGLcnSdYbgQL8bu0orXaqptx868NErd0sXSEunZddwHc"
+ACCESS_TOKEN <- "1595258199812153344-N86DEcAhSSZJay5r6rDP5j3oy4iUWt"
+
+setup_twitter_oauth(consumer_key = CONSUMER_KEY,
+                    consumer_secret = CONSUMER_SECRET,
+                    access_token = ACCESS_TOKEN,
+                    access_secret = ACCESS_SECRET)
+
+trendTweets2 <- searchTwitter("#food",
+                             n = 10000,
+                             maxID = NULL,
+                             lang = "en",
+                             since = "2022-12-14",
+                             until = "2022-12-21",
+                             retryOnRateLimit=120)
+trendTweets2
+
+
+
+
+#data frame
+trends_rt <- twListToDF(trendTweets2)
+View(trends_rt)
+head(trends_rt, n= 5)
+names(trends_rt)
+class(trends_rt)
+data_text <- head(trends_rt$text)[1:5]
+data_text
+
+save(trends_rt,file= "trends_rt.Rdata")
+load(file= "trends_rt.Rdata")
+
+#sub1
+tweet_origin <- trends_rt %>%
+  select(screenName,text,created,statusSource,isRetweet) %>% 
+  filter(isRetweet == "FALSE")
+save(tweet_origin, file = "tweet_origin.Rdata")
+
+#sub2
+retweet_origin <- trends_rt %>%
+  select(screenName,text,created,statusSource,isRetweet) %>% 
+  filter(isRetweet == "TRUE")
+save(retweet_origin, file = "retweet_origin.Rdata")
+
+#
+tweet_origin %>%  
+  group_by(1) %>%  
+  summarise(max = max(created), min = min(created))
+
+tweet <- tweet_origin %>%  mutate(Created_round1 = created %>% round(units = 'hours') %>% as.POSIXct())
+tweet
+
+min1 <- tweet_origin %>% pull(created) %>% min()
+min1 
+max1 <- tweet_origin %>% pull(created) %>% max()
+max1
+
+#
+retweet_origin %>%  
+  group_by(1) %>%  
+  summarise(max = max(created), min = min(created))
+
+retweets1 <- retweet_origin %>%  mutate(Created_round2 = created %>% round(units = 'hours') %>% as.POSIXct())
+retweets1
+
+min2 <- retweet_origin %>% pull(created) %>% min()
+min2 
+max2 <- retweet_origin %>% pull(created) %>% max()
+max2
+
+#Plot the retweets and the original tweets using bar graph in vertical manner.
+#Include legends.
+
+#original tweets.
+tweets1 <- ggplot(tweet_origin, aes(x= created)) + geom_histogram(aes(fill = ..count..)) +
+  theme(legend.position = "right") + xlab("Time") + ylab("Number of tweets") + 
+  scale_fill_gradient(low = "cyan", high = "purple")
+
+tweets1 %>% ggplotly()
+
+#retweets.
+tweets2 <- ggplot(retweet_origin, aes(x = created)) + geom_histogram(aes(fill = ..count..)) +
+  theme(legend.position = "right") + xlab("Time") + ylab("Number of retweets") + 
+  scale_fill_gradient(low = "coral", high = "cyan")
+
+tweets2 %>% ggplotly()
+
